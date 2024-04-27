@@ -63,6 +63,7 @@ For a complete list of configurable options and additional functionality, you ca
 **Arguments**:
 
 - `--backup-dir "/root/backup"` : Base Backup Directory: Specifies the root directory where all backup data will be stored on the server. This directory should have enough space to store the backup data and appropriate permissions to allow the script to write data.
+- `--backup-cpu-cores "20"` : Specifies the percentage of CPU cores to use for operations like compressing with xz. By default xz is set to use only a single thread. Allocating too many cores to the script might affect the performance of other applications running on the same server. It’s important to balance the core usage to ensure that the system remains responsive for all tasks.
 - `--days-to-backup 7` : Days to Keep Local Backups: Number of days to retain local backup directories before they are automatically deleted. Defines how long (in days) backups should be kept before they are automatically deleted. This helps manage disk space by removing old backups.
 
 **Parameters**:
@@ -171,13 +172,13 @@ Run the script:
 **Arguments**:
 
 - `--s3-backup true` : This setting controls whether backups should be uploaded to S3. Setting this to `true` enables the backup process to S3, and setting it to `false` disables it.
-- `--s3-bucket s3://bucket/backup` : This specifies the bucket name on S3 where the backups will be stored.
+- `--s3-bucket "bucket_name"` : This specifies the bucket name on S3 where the backups will be stored.
 - `--s3-days-to-backup 7` : This setting specifies the number of days to retain the backup directories on S3 before they are automatically deleted.
 
 **Parameters**:
 
 - `S3_BACKUP="false"`
-- `S3_BUCKET_NAME="s3://bucket/backup"`
+- `S3_BUCKET_NAME="bucket_name"`
 - `S3_DAYS_TO_BACKUP=14`
 
 ### Install and Configure AWS S3
@@ -224,7 +225,7 @@ This setup directs all AWS CLI S3 commands to use the specified endpoint, facili
 
 Run the script:
 ```bash
-./neo.sh --s3-backup true --s3-bucket "s3://bucket/backup" --s3-days-to-backup 30 --domain-backup true
+./neo.sh --s3-backup true --s3-bucket "bucket_name" --s3-days-to-backup 30 --domain-backup true
 ```
 
 ## Mega.nz Backup
@@ -312,6 +313,7 @@ Using cron effectively can help automate many routine tasks, making system maint
         -h, --help                     Display this help and exit.
 
         --backup-dir          DIR      Specify the directory for storing all backup data                 Default: "/root/backup"
+        --backup-cpu-cores    NUM      Percentage of CPU cores to use for compressing with xz            Default: "1 core"
         --days-to-backup      NUM      Set the number of days to retain local backup files               Default: 7
 
     Domain Backup Options:
@@ -361,6 +363,8 @@ Using cron effectively can help automate many routine tasks, making system maint
 | Author: Nauris Steins                                 | 
 | https://github.com/naurissteins/neo-backup            | 
 +-------------------------------------------------------+ 
+
+- Using 4 of 12 cores for domain backup compression
 
 | General Backup Settings
 - Backup Directory Path: /home/ns/backup

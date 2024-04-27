@@ -1,5 +1,6 @@
 # Backup directory path
 BACKUP_DIR="$HOME/backup"               # Specifies the root directory where all backup data will be stored
+BACKUP_CPU_CORES=""                     # Specifies the percentage of CPU cores to use for operations like compressing with xz
 
 # Days to Backup
 DAYS_TO_BACKUP=7                        # Number of days to retain local backup directories before they are automatically deleted

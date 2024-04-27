@@ -37,6 +37,7 @@ Usage: ${0##*/} [options]
         -h, --help                     Display this help and exit.
 
         --backup-dir          DIR      Specify the directory for storing all backup data                 Default: "/root/backup"
+        --backup-cpu-cores    NUM      Percentage of CPU cores to use for compressing with xz            Default: "1 core"
         --days-to-backup      NUM      Set the number of days to retain local backup files               Default: 7
 
     Domain Backup Options:
@@ -77,7 +78,7 @@ EOF
 
 
 # Define the options
-OPTS=$(getopt -o h --long help,backup-dir:,days-to-backup:,domain-backup:,domain-dir:,domain-exclude:,mysql-backup:,mysql-exclude:,sftp-backup:,sftp-backup-dir:,sftp-host:,sftp-days-to-backup:,s3-backup:,s3-bucket:,s3-days-to-backup:,mega-backup:,mega-backup-dir:,mega-days-to-backup:,logs-dir:,logs-delete: -n 'parse-options' -- "$@")
+OPTS=$(getopt -o h --long help,backup-dir:,backup-cpu-cores:,days-to-backup:,domain-backup:,domain-dir:,domain-exclude:,mysql-backup:,mysql-exclude:,sftp-backup:,sftp-backup-dir:,sftp-host:,sftp-days-to-backup:,s3-backup:,s3-bucket:,s3-days-to-backup:,mega-backup:,mega-backup-dir:,mega-days-to-backup:,logs-dir:,logs-delete: -n 'parse-options' -- "$@")
 if [ $? != 0 ]; then
     echo "Failed parsing options." >&2
     exit 1
@@ -88,6 +89,10 @@ while true; do
     case "$1" in
         --backup-dir )
             BACKUP_DIR="$2"
+            shift 2
+            ;;
+        --backup-cpu-cores )
+            BACKUP_CPU_CORES="$2"
             shift 2
             ;;
         --days-to-backup )
@@ -176,6 +181,30 @@ while true; do
             ;;
     esac
 done
+
+# Calculate the number of available CPU cores, rounding up
+total_cores=$(nproc)  # Gets the total number of available cores
+
+# Check if BACKUP_CPU_CORES is set and is a number greater than 0
+if [[ -n "$BACKUP_CPU_CORES" && "$BACKUP_CPU_CORES" -gt 0 ]]; then
+    percent_to_use=$BACKUP_CPU_CORES
+else
+    percent_to_use=0  # Default to using a single core if percentage is not set or is invalid
+fi
+
+# Calculate cores to use based on the percentage, default to 1 core if percentage is 0
+if [ "$percent_to_use" -gt 0 ]; then
+    cores_to_use=$(echo "($total_cores * $percent_to_use + 99) / 100" | bc)  # Calculate percentage, round up
+else
+    cores_to_use=1  # Default to one core
+fi
+
+# Ensure at least one core is always used
+cores_to_use=$(( cores_to_use > 0 ? cores_to_use : 1 ))
+export cores_to_use  # Make sure it is available in subshells
+
+echo "- Using $cores_to_use of $total_cores cores for domain backup compression"
+echo | tee -a "$LOG_FILE"
 
 # Determine the SQL command tool based on system installation
 if [ -x "$(command -v mariadb)" ]; then
@@ -350,13 +379,14 @@ if [ "${DOMAIN_BACKUP}" = "true" ]; then
     # Start of Domains backup process
     print_styled_log "Domain Archiving"
     DOMAINS_BACKUP_DIR="${TODAYS_BACKUP_DIR}/domains"
-    mkdir -p ${DOMAINS_BACKUP_DIR} || { echo "Failed to create domains backup directory" | tee -a "$LOG_FILE"; exit 1; }
+    mkdir -p "${DOMAINS_BACKUP_DIR}" || { echo "Failed to create domains backup directory" | tee -a "$LOG_FILE"; exit 1; }
 
     # Temporary file to track skipped domains
     temp_skipped_domains_file=$(mktemp)
+    trap 'rm -f "$temp_skipped_domains_file"' EXIT
 
     # Find domains and execute backup
-    find ${DOMAINS_DIR} -mindepth 1 -maxdepth 1 -type d -exec bash -c '
+    process_domain() {
         folder="$1"
         domain=$(basename "$folder")
         skip_pattern="$2"
@@ -370,13 +400,18 @@ if [ "${DOMAIN_BACKUP}" = "true" ]; then
         else
             echo "- Processing domain: $domain" | tee -a "$log_file"
             tar_output="${backup_dir}/neo_${domain}_${date_format}_${random_suffix}.tar.xz"
-            if tar cJf "$tar_output" -C "$(dirname "$folder")" "$domain"; then
+            compress_cmd="xz -T $cores_to_use"
+
+            if tar -cf "$tar_output" --use-compress-program="$compress_cmd" -C "$(dirname "$folder")" "$domain"; then
                 echo "+ Successfully archived: $domain" | tee -a "$log_file"
             else
                 echo "! Failed to back up domain: $domain" | tee -a "$log_file"
             fi
         fi
-    ' _ {} "$DOMAIN_EXCLUDE" "$LOG_FILE" "$DOMAINS_BACKUP_DIR" "$RANDOM_SUFFIX" "$temp_skipped_domains_file" \;
+    }
+
+    export -f process_domain
+    find "${DOMAINS_DIR}" -mindepth 1 -maxdepth 1 -type d -exec bash -c 'process_domain "$0" "$@"' {} "$DOMAIN_EXCLUDE" "$LOG_FILE" "$DOMAINS_BACKUP_DIR" "$RANDOM_SUFFIX" "$temp_skipped_domains_file" \;
 
     # Display skipped domains if any
     if [ -s "$temp_skipped_domains_file" ]; then
@@ -390,9 +425,7 @@ if [ "${DOMAIN_BACKUP}" = "true" ]; then
         echo "- Excluded domain: $skipped_domains" | tee -a "$LOG_FILE"
     fi
 
-    # Clean up temporary file
-    rm "$temp_skipped_domains_file"
-
+    # Explicit cleanup is not needed due to trap
     echo "+ Domain archiving completed." | tee -a "$LOG_FILE"
 fi
 

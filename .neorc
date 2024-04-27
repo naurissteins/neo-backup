@@ -1,0 +1,40 @@
+# Backup directory path
+BACKUP_DIR="$HOME/backup"               # Specifies the root directory where all backup data will be stored
+
+# Days to Backup
+DAYS_TO_BACKUP=7                        # Number of days to retain local backup directories before they are automatically deleted
+
+# Domain or User Backup
+DOMAIN_BACKUP="false"                   # Set to 'true' to enable backing up of domain directories, 'false' to disable
+DOMAINS_DIR="/home"                     # Path to the directory containing domain folders to be backed up
+DOMAIN_EXCLUDE=""                       # Use the pipe '|' (domain1|domain2) character to separate multiple domain names to exclude
+
+# MySQL Backup
+MYSQL_BACKUP="false"                    # Set to 'true' to enable MySQL database backups, 'false' to disable
+MYSQL_EXCLUDE=""                        # Use the pipe '|' (database1|database2) character to separate multiple database names to exclude
+
+# MySQL Configuration
+MYSQL_USER="root"                       # MySQL user that can dump all databases, e.g. root
+MYSQL_PASS="password"                   # MySQL user password that can dump all databases
+MYSQL_HOST="localhost"                  # MySQL Hostname
+MYSQL_PORT="3306"                       # MySQL Port
+
+# SFTP Backup
+SFTP_BACKUP="false"                     # Setting this to `true` enable the backup to SFTP server, and setting it to `false` disables it
+SFTP_BACKUP_DIR="/backup"               # This specifies the directory path on remote server where the backups will be stored
+SFTP_HOST="backupserver"                # Please read how to setup secure transfer to sftp server https://github.com/naurissteins/neo-backup
+SFTP_DAYS_TO_BACKUP=14                  # Days to Keep Backups on SFTP server: Number of days to retain backup directories before they are automatically deleted.
+
+# AWS S3 Backup
+S3_BACKUP="false"                       # Setting this to `true` enables the backup process to S3, and setting it to `false` disables it
+S3_BUCKET_NAME="bucket_name"            # This specifies the bucket name on S3 where the backups will be stored
+S3_DAYS_TO_BACKUP=14                    # Number of days to retain S3 backup directories before they are automatically deleted
+
+# Backup to Mega.nz
+MEGA_BACKUP="false"                     # Setting this to `true` enables the backup process to Mega.nz, and setting it to `false` disables it
+MEGA_BACKUP_DIR="/backup"               # This specifies the directory path on Mega.nz where the backups will be stored
+MEGA_DAYS_TO_BACKUP=14                  # Number of days to retain MEGA backup directories before they are automatically deleted
+
+# Logs settings
+LOGS_DIR="${BACKUP_DIR}/logs"           # Specifies the logs directory where all log files will be stored
+LOGS_DELETE=7                           # Number of days to retain log files before they are automatically deleted

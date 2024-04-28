@@ -49,6 +49,11 @@ Usage: ${0##*/} [options]
         --mysql-backup        BOOL      Enable or disable backing up of MySQL databases                  Default: false
         --mysql-exclude       PATTERN   List MySQL databases to exclude from backup, separated by '|'    Example: "database1|database2"
 
+    MyDumper Options:
+        --mydumper            BOOL      Enable or disable database dump with MyDumper                    Default: false
+        --mydumper-threads    NUM       Set the number of threads to use                                 Default: 4
+        --mydumper-verbose    NUM       0 = silent, 1 = errors, 2 = warnings, 3 = info,                  Default: 2
+
     SFTP Backup Options:
         --sftp-backup         BOOL      Enable or disable SFTP backup. Default: false
         --sftp-backup-dir     DIR       Specify the SFTP directory for storing backup data               Default: "/backup"
@@ -78,7 +83,7 @@ EOF
 
 
 # Define the options
-OPTS=$(getopt -o h --long help,backup-dir:,backup-cpu-cores:,days-to-backup:,domain-backup:,domain-dir:,domain-exclude:,mysql-backup:,mysql-exclude:,sftp-backup:,sftp-backup-dir:,sftp-host:,sftp-days-to-backup:,s3-backup:,s3-bucket:,s3-days-to-backup:,mega-backup:,mega-backup-dir:,mega-days-to-backup:,logs-dir:,logs-delete: -n 'parse-options' -- "$@")
+OPTS=$(getopt -o h --long help,backup-dir:,backup-cpu-cores:,days-to-backup:,domain-backup:,domain-dir:,domain-exclude:,mysql-backup:,mysql-exclude:,mydumper:,mydumper-threads:,mydumper-verbose:,sftp-backup:,sftp-backup-dir:,sftp-host:,sftp-days-to-backup:,s3-backup:,s3-bucket:,s3-days-to-backup:,mega-backup:,mega-backup-dir:,mega-days-to-backup:,logs-dir:,logs-delete: -n 'parse-options' -- "$@")
 if [ $? != 0 ]; then
     echo "Failed parsing options." >&2
     exit 1
@@ -117,6 +122,18 @@ while true; do
             ;;
         --mysql-exclude )
             MYSQL_EXCLUDE="$2"
+            shift 2
+            ;;
+        --mydumper )
+            MY_DUMPER="$2"
+            shift 2
+            ;;
+        --mydumper-threads )
+            MY_DUMPER_THREADS="$2"
+            shift 2
+            ;;
+        --mydumper-verbose )
+            MY_DUMPER_VERBOSE="$2"
             shift 2
             ;;
         --sftp-backup )
@@ -203,7 +220,11 @@ fi
 cores_to_use=$(( cores_to_use > 0 ? cores_to_use : 1 ))
 export cores_to_use  # Make sure it is available in subshells
 
-echo "- Using $cores_to_use of $total_cores cores for domain backup compression"
+if [ "${MY_DUMPER}" = "true" ]; then
+    echo "- Using $cores_to_use of $total_cores CPU cores for domain and database compression" | tee -a "$LOG_FILE"
+else
+    echo "- Using $cores_to_use of $total_cores CPU cores for domain backup compression" | tee -a "$LOG_FILE"
+fi
 echo | tee -a "$LOG_FILE"
 
 # Determine the SQL command tool based on system installation
@@ -258,6 +279,12 @@ if [ "${MYSQL_BACKUP}" = "true" ]; then
         version_simple=$(echo "$version_output" | grep -oP '\d+\.\d+\.\d+')
     fi
     echo "- $SQL_VER Version: $version_simple" | tee -a "$LOG_FILE"
+
+    if [ "${MY_DUMPER}" = "true" ]; then
+        echo "- Dumping Utility: mydumper" | tee -a "$LOG_FILE"
+    else
+        echo "- Dumping Utility: $DUMP_CMD" | tee -a "$LOG_FILE"
+    fi
 
     # Check if MYSQL_EXCLUDE is set and not empty
     if [ -n "$MYSQL_EXCLUDE" ]; then
@@ -338,24 +365,45 @@ print_styled_log() {
 
 # Backup MySQL
 if [ "${MYSQL_BACKUP}" = "true" ]; then
-    # Start of MySQL backup process
     print_styled_log "$SQL_VER Database Dump"
     MYSQL_BACKUP_DIR="${TODAYS_BACKUP_DIR}/mysql"
-    mkdir -p ${MYSQL_BACKUP_DIR} || { echo "Failed to create MySQL backup directory" | tee -a "$LOG_FILE"; exit 1; }
+    mkdir -p "${MYSQL_BACKUP_DIR}" || { echo "Failed to create MySQL backup directory" | tee -a "$LOG_FILE"; exit 1; }
 
-    # Variable to collect skipped databases
-    exclude_db=""
-
-    # Start MySQL backup process using user credentials from .backuprc
+    # Determine the list of databases to back up
     databases=$(${SQL_CMD} -h "${MYSQL_HOST}" -P "${MYSQL_PORT}" -u "${MYSQL_USER}" -p"${MYSQL_PASS}" -e 'show databases;' | grep -Ev "^(Database|mysql|information_schema|performance_schema|phpmyadmin|sys)$")
 
+    # Iterate over each database and perform backup
     for db in $databases; do
         if [[ -z "$MYSQL_EXCLUDE" || ! $db =~ $MYSQL_EXCLUDE ]]; then
             echo "- Dumping database: ${db}" | tee -a "$LOG_FILE"
-            if ${DUMP_CMD} -h "${MYSQL_HOST}" -P "${MYSQL_PORT}" -u "${MYSQL_USER}" -p"${MYSQL_PASS}" --single-transaction "${db}" | gzip > "${MYSQL_BACKUP_DIR}/neo_${db}_$(date +%F)_${RANDOM_SUFFIX}.sql.gz"; then
-                echo "+ Successfully dumped: ${db}" | tee -a "$LOG_FILE"
+            dump_dir="${MYSQL_BACKUP_DIR}/neo_${db}_$(date +%F)_${RANDOM_SUFFIX}"
+            if [ "${MY_DUMPER}" = "true" ]; then
+                # Backup with mydumper
+                if mydumper -u ${MYSQL_USER} -p ${MYSQL_PASS} -h ${MYSQL_HOST} -P ${MYSQL_PORT} --outputdir "$dump_dir" --regex "${db}" --compress --verbose ${MY_DUMPER_VERBOSE} --threads ${MY_DUMPER_THREADS}; then
+                    echo "+ Successfully dumped!" | tee -a "$LOG_FILE"
+
+                    # Compress the database directory and remove uncompressed dumps
+                    tar_output="${MYSQL_BACKUP_DIR}/neo_${db}_$(date +%F)_${RANDOM_SUFFIX}.tar.xz"
+                    compress_cmd="xz -T $cores_to_use"
+
+                    if tar -cf "$tar_output" --use-compress-program="$compress_cmd" -C "$dump_dir" .; then
+                        echo "+ Successfully compressed!" | tee -a "$LOG_FILE"
+                        echo | tee -a "$LOG_FILE"
+                        rm -r "$dump_dir"
+                    else
+                        echo "! Failed to compress database backup: ${db}" | tee -a "$LOG_FILE"
+                    fi
+                else
+                    echo "! Failed to back up database: ${db}" | tee -a "$LOG_FILE"
+                fi
             else
-                echo "! Failed to back up database: ${db}" | tee -a "$LOG_FILE"
+                # Backup with mysqldump or mariadb-dump
+                if ${DUMP_CMD} --single-transaction -u ${MYSQL_USER} -p${MYSQL_PASS} -h ${MYSQL_HOST} -P ${MYSQL_PORT} ${db} | gzip > "${dump_dir}.sql.gz"; then
+                    echo "+ Successfully dumped!" | tee -a "$LOG_FILE"
+                    echo | tee -a "$LOG_FILE"
+                else
+                    echo "! Failed to back up database: ${db}" | tee -a "$LOG_FILE"
+                fi
             fi
         else
             exclude_db+="${db}, "

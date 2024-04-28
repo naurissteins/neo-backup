@@ -19,6 +19,7 @@ Ideal for server environments where regular backups are critical, such as web ho
 - [SFTP Backup](#sftp-backup "SFTP Backup")
 - [AWS S3 Backup](#aws-s3-backup "AWS S3 Backup")
 - [Mega.nz Backup](#meganz-backup "Mega.nz Backup")
+- [MyDumper](#mydumper "MyDumper")
 - [Run backup script with Cron](#run-backup-script-with-cron "Run backup script with Cron")
 - [List of configurable options](#list-of-configurable-options "Log File Output")
 - [Log File Output](#log-file-output "List of configurable options")
@@ -246,6 +247,38 @@ Run the script:
 - Official website: [https://mega.io/cmd](https://mega.io/cmd "https://mega.io/cmd")
 - GitHub page: [https://github.com/meganz/MEGAcmd](https://github.com/meganz/MEGAcmd "https://github.com/meganz/MEGAcmd")
 
+## MyDumper
+
+**MyDumper** is a high-performance, multi-threaded MySQL backup tool originally designed to perform faster and more reliable backups compared to traditional tools like `mysqldump`. It provides several features that make it an excellent choice for large and complex database environments.
+
+**Arguments**:
+
+- `--mydumper true` : Setting this to `true` enables the database dump with MyDumper, and setting it to `false` disables it
+- `--mydumper-threads 4` : Specifies the number of threads that MyDumper uses for the backup process. Using multiple threads can significantly speed up the backup by allowing parallel processing of multiple tables or chunks of data. The optimal number of threads depends on the hardware capabilities of the server and the workload characteristics. It's recommended to set this to match or be slightly less than the number of CPU cores available to balance performance with resource usage
+- `--mydumper-verbose 2` : This option allows to increase the verbosity of the output during the dump process, which can be helpful for troubleshooting or monitoring the progress of the dump. Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2
+
+**Parameters**:
+
+- `MY_DUMPER="false"`
+- `MY_DUMPER_THREADS=4`
+- `MY_DUMPER_VERBOSE=2`
+
+**Recommended Usage**:
+
+**MyDumper** is particularly recommended for backing up large databases where performance and minimal disruption are critical. Its ability to perform parallel dumps dramatically reduces backup time and is especially beneficial for databases with large tables or a high number of tables.
+For smaller databases or environments where backup time is less critical, the traditional `mysqldump` tool may suffice. `mysqldump` is simpler to use and requires less configuration but performs backups serially, which can be slower compared to **MyDumper**.
+
+**For Advanced Users**:
+
+NEO Backup script integrates MyDumper with basic but essential configuration options `--threads`, `--compress`, `--verbose` that are sufficient for most use cases. Advanced users may require additional tuning and customization for specific scenarios. If you need to implement more advanced MyDumper settings such as `--long-query-guard`, `--chunk-filesize`, or others, you can manually add these settings in the `neo.sh` script under the **MySQL Backup** section.
+
+MyDumper offical GitHub page: [https://github.com/mydumper/mydumper](https://github.com/mydumper/mydumper "https://github.com/mydumper/mydumper")
+
+Run the script:
+```bash
+./neo.sh --mysql-backup true --mydumper true --mydumper-threads 4 --mydumper-verbose 2
+```
+
 ## Run backup script with Cron
 Cron works by reading crontab (cron table) files for predefined commands and scripts set by the user or the system's administrator. Each user can have their own crontab, and there is also a system-wide crontab.
 Cron is driven by a daemon known as crond (cron daemon). This daemon checks crontab files and the system-wide crontab directory periodically, typically every minute, to execute tasks scheduled for the current time.
@@ -325,6 +358,11 @@ Using cron effectively can help automate many routine tasks, making system maint
         --mysql-backup        BOOL      Enable or disable backing up of MySQL databases                  Default: false
         --mysql-exclude       PATTERN   List MySQL databases to exclude from backup, separated by '|'    Example: "database1|database2"
 
+    MyDumper Options:
+        --mydumper            BOOL      Enable or disable database dump with MyDumper                    Default: false
+        --mydumper-threads    NUM       Set the number of threads to use                                 Default: 4
+        --mydumper-verbose    NUM       0 = silent, 1 = errors, 2 = warnings, 3 = info,                  Default: 2        
+
     SFTP Backup Options:
         --sftp-backup         BOOL      Enable or disable SFTP backup. Default: false
         --sftp-backup-dir     DIR       Specify the SFTP directory for storing backup data               Default: "/backup"
@@ -364,7 +402,7 @@ Using cron effectively can help automate many routine tasks, making system maint
 | https://github.com/naurissteins/neo-backup            | 
 +-------------------------------------------------------+ 
 
-- Using 4 of 12 cores for domain backup compression
+- Using 5 of 12 CPU cores for domain and database compression
 
 | General Backup Settings
 - Backup Directory Path: /home/ns/backup
@@ -381,6 +419,7 @@ Using cron effectively can help automate many routine tasks, making system maint
 | MariaDB Settings
 - MariaDB Backup: enabled
 - MariaDB Version: 11.3.2
+- Dumping Utility: mydumper
 - Databases for exclude: database1, database2
 
 | SFTP Settings
@@ -407,7 +446,7 @@ Starting backup process at sestdiena, 2024. gada 27. aprīlis, 15:29:13 EEST
 | MariaDB Database Dump |
 +-----------------------+
 - Dumping database: example
-+ Successfully dumped: example
++ Successfully dumped!
 
 - Excluded database: database1, database2
 + Database dump process completed.
@@ -481,5 +520,6 @@ Log file copied to today's backup directory: /home/ns/backup/2024-04-27-1529
 - [x] **Automate Backup Uploads to MEGA**: Implement automated upload of backup files to MEGA using `MEGA CLI`
 - [x] **Automate Backup Uploads to AWS S3**: Implement automated upload of backup files to Amazon S3 using `AWS S3 CLI`
 - [x] **Automate Backup Transfers to External Server**: Implement automated transfer of backup files to an external server using `SFTP`
+- [x] **Implement MyDumper**: A high-performance, multi-threaded MySQL backup tool originally designed to perform faster
 - [ ] **WebDav solution**: Secure automate backup to `WebDav`
 - [ ] **Add Email Notifications for Logging**: Implement functionality to send log notifications via email after each backup session

@@ -14,6 +14,11 @@ DOMAIN_EXCLUDE=""                       # Use the pipe '|' (domain1|domain2) cha
 MYSQL_BACKUP="false"                    # Set to 'true' to enable MySQL database backups, 'false' to disable
 MYSQL_EXCLUDE=""                        # Use the pipe '|' (database1|database2) character to separate multiple database names to exclude
 
+# Mydumper
+MY_DUMPER="false"                       # Set to 'true' to enable MyDumper database dump, 'false' to disable
+MY_DUMPER_THREADS=4                     # Set the number of threads to use
+MY_DUMPER_VERBOSE=2                     # Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2
+
 # MySQL Configuration
 MYSQL_USER="root"                       # MySQL user that can dump all databases, e.g. root
 MYSQL_PASS="password"                   # MySQL user password that can dump all databases

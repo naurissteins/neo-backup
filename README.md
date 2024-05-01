@@ -7,6 +7,10 @@ Ideal for server environments where regular backups are critical, such as web ho
 - `SFTP` Integration: Facilitates secure file transfer to SFTP servers, offering a reliable method for backing up data over an encrypted connection.
 - `Mega.nz` Integration: Supports uploading backups directly to Mega.nz, utilizing its generous storage capacity and robust encryption, which ensures that your backups are not only safe from data loss but also protected from unauthorized access.
 - `AWS S3` Integration: Provides the capability to upload backups to AWS S3, benefiting from its high durability, availability, and integrated security features. This integration is ideal for users looking for scalable and cost-effective cloud storage solutions.
+- `rclone` Integration: Enables extensive compatibility with over 40 cloud storage providers including Google Drive, Dropbox, and Microsoft OneDrive, among others. rclone is a powerful command-line program to manage files on cloud storage.
+
+**Reliable Database Dumping Tool**:
+- `MyDumper` Integration: A high-performance, multi-threaded MySQL backup tool originally designed to perform faster and more reliable backups compared to traditional tools like `mysqldump`. It provides several features that make it an excellent choice for large and complex database environments
 
 ------------
 
@@ -20,6 +24,7 @@ Ideal for server environments where regular backups are critical, such as web ho
 - [AWS S3 Backup](#aws-s3-backup "AWS S3 Backup")
 - [Mega.nz Backup](#meganz-backup "Mega.nz Backup")
 - [MyDumper](#mydumper "MyDumper")
+- [Rclone](#rclone "Rclone")
 - [Run backup script with Cron](#run-backup-script-with-cron "Run backup script with Cron")
 - [List of configurable options](#list-of-configurable-options "Log File Output")
 - [Log File Output](#log-file-output "List of configurable options")
@@ -247,6 +252,37 @@ Run the script:
 - Official website: [https://mega.io/cmd](https://mega.io/cmd "https://mega.io/cmd")
 - GitHub page: [https://github.com/meganz/MEGAcmd](https://github.com/meganz/MEGAcmd "https://github.com/meganz/MEGAcmd")
 
+Run the script:
+```bash
+./neo.sh --mysql-backup true --domain-backup true --mega-backup true --mega-backup-dir "/backup" --mega-days-to-backup 14
+```
+
+## Rclone
+
+Enables extensive compatibility with over 40 cloud storage providers including Google Drive, Dropbox, and Microsoft OneDrive, among others. rclone is a powerful command-line program to manage files on cloud storage.
+
+**Arguments**:
+
+- `--rclone true` : Set to `true` to enable rclone, `false` to disable
+- `--rclone-remote "aws:bucket"` : Example: GoogleDrive:MyBackup or aws3:bucket, etc.
+- `--rclone-days-to-backup 14` : Number of days to retain MEGA backup directories before they are automatically deleted
+
+**Parameters**:
+
+- `RCLONE="false"`
+- `RCLONE_REMOTE="aws:bucket"`
+- `RCLONE_DAYS_TO_BACKUP=14`
+
+**Install and setup rclone**:
+- Official website: [https://rclone.org](https://rclone.org "https://rclone.org")
+- GitHub page: [https://github.com/rclone/rclone](https://github.com/rclone/rclone "https://github.com/rclone/rclone")
+
+Run the script:
+```bash
+./neo.sh --mysql-backup true --domain-backup true --rclone true --rclone-remote "aws:bucket" --rclone-days-to-backup 14
+```
+
+
 ## MyDumper
 
 **MyDumper** is a high-performance, multi-threaded MySQL backup tool originally designed to perform faster and more reliable backups compared to traditional tools like `mysqldump`. It provides several features that make it an excellent choice for large and complex database environments.
@@ -345,43 +381,52 @@ Using cron effectively can help automate many routine tasks, making system maint
     General Options:
         -h, --help                     Display this help and exit.
 
-        --backup-dir          DIR      Specify the directory for storing all backup data                 Default: "/root/backup"
-        --backup-cpu-cores    NUM      Percentage of CPU cores to use for compressing with xz            Default: "1 core"
-        --days-to-backup      NUM      Set the number of days to retain local backup files               Default: 7
+        --backup-dir            DIR      Specify the directory for storing all backup data                 Default: "/root/backup"
+        --backup-cpu-cores      NUM      Percentage of CPU cores to use for compressing with xz            Default: "1 core"
+        --days-to-backup        NUM      Set the number of days to retain local backup files               Default: 7
 
     Domain Backup Options:
-        --domain-backup       BOOL     Enable or disable backing up of domain directories                Default: false
-        --domain-dir          DIR      Specify the directory containing domain data to backup            Default: "/home"
-        --domain-exclude      PATTERN  List domain directories to exclude from backup, separated by '|'  Example: "domain1|domain2"
+        --domain-backup         BOOL     Enable or disable backing up of domain directories                Default: false
+        --domain-dir            DIR      Specify the directory containing domain data to backup            Default: "/home"
+        --domain-exclude        PATTERN  List domain directories to exclude from backup, separated by '|'  Example: "domain1|domain2"
 
     MySQL Backup Options:
-        --mysql-backup        BOOL      Enable or disable backing up of MySQL databases                  Default: false
-        --mysql-exclude       PATTERN   List MySQL databases to exclude from backup, separated by '|'    Example: "database1|database2"
+        --mysql-backup          BOOL      Enable or disable backing up of MySQL databases                  Default: false
+        --mysql-exclude         PATTERN   List MySQL databases to exclude from backup, separated by '|'    Example: "database1|database2"
 
     MyDumper Options:
-        --mydumper            BOOL      Enable or disable database dump with MyDumper                    Default: false
-        --mydumper-threads    NUM       Set the number of threads to use                                 Default: 4
-        --mydumper-verbose    NUM       0 = silent, 1 = errors, 2 = warnings, 3 = info,                  Default: 2        
+        --mydumper              BOOL      Enable or disable database dump with MyDumper                    Default: false
+        --mydumper-threads      NUM       Set the number of threads to use                                 Default: 4
+        --mydumper-verbose      NUM       0 = silent, 1 = errors, 2 = warnings, 3 = info,                  Default: 2
 
     SFTP Backup Options:
-        --sftp-backup         BOOL      Enable or disable SFTP backup. Default: false
-        --sftp-backup-dir     DIR       Specify the SFTP directory for storing backup data               Default: "/backup"
-        --sftp-host           HOST      SSH configuration settings to simplify the SFTP command          Default: "backupserver"
-        --sftp-days-to-backup NUM       Days to retain backups on SFTP server                            Default: 14
+        --sftp-backup           BOOL      Enable or disable SFTP backup. Default: false
+        --sftp-backup-dir       DIR       Specify the SFTP directory for storing backup data               Default: "/backup"
+        --sftp-host             HOST      SSH configuration settings to simplify the SFTP command          Default: "backupserver"
+        --sftp-days-to-backup   NUM       Days to retain backups on SFTP server                            Default: 14
 
     AWS S3 Backup Options:
-        --s3-backup           BOOL      Enable or disable backup to AWS S3                               Default: false
-        --s3-bucket           BUCKET    Specify the S3 bucket for storing backups                        Example: "bucket_name"
-        --s3-days-to-backup   NUM       Set the number of days to retain backups on S3                   Default: 14
+        --s3-backup             BOOL      Enable or disable backup to AWS S3                               Default: false
+        --s3-bucket             BUCKET    Specify the S3 bucket for storing backups                        Example: "bucket_name"
+        --s3-days-to-backup     NUM       Set the number of days to retain backups on S3                   Default: 14
+
+    Rclone Backup Options:
+        --rclone                BOOL      Set to 'true' to enable rclone, 'false' to disable               Default: false
+        --rclone-remote         HOST:DIR  Example: GoogleDrive:MyBackup or aws3:bucket                     Example: "aws:bucket"
+        --rclone-days-to-backup NUM       Set the number of days to keep backups                           Default: 14
 
     MEGA Backup Options:
-        --mega-backup         BOOL      Enable or disable backup to Mega.                                Default: false
-        --mega-backup-dir     DIR       Specify the directory on Mega where backups will be stored       Default: "/backup"
-        --mega-days-to-backup NUM       Days to retain backups on Mega                                   Default: 14
+        --mega-backup           BOOL      Enable or disable backup to Mega.                                Default: false
+        --mega-backup-dir       DIR       Specify the directory on Mega where backups will be stored       Default: "/backup"
+        --mega-days-to-backup   NUM       Days to retain backups on Mega                                   Default: 14
 
     Logs Options:
-        --logs-dir            DIR       Specify the directory for storing backup process logs data       Default: "/root/backup/logs"
-        --logs-delete         NUM       Days to retain backup process logs                               Default: 14
+        --logs-dir              DIR       Specify the directory for storing backup process logs data       Default: "/root/backup/logs"
+        --logs-delete           NUM       Days to retain backup process logs                               Default: 14
+
+    Examples:
+        ./backup.sh --backup-dir "/path/to/backup" --mysql-backup true --mysql-exclude "database1|database2"
+        ./backup.sh --s3-backup true --s3-bucket "s3://mybucket/backup" --s3-days-to-backup 30 --domain-backup true
 ```
 
 ## Log File Output
@@ -485,6 +530,21 @@ upload: backup/2024-04-27-1529/mysql/neo_example_2024-04-27_0736.sql.gz to s3://
 
 - Checking for backup directories older than 14 days on S3...
 - No old backups to delete.
+
++------------------+
+| Backup to rclone |
++------------------+
+- Uploading /home/ns/backup/2024-04-30-2315 to r2:cdn ... 
+
++ Backup successfully uploaded!
+
+- Checking for backup directories older than 14 days...
+| Deleted: 2024-04-30-2313/mysql/neo_example_2024-04-30_3793.sql.gz
+| Deleted: 2024-04-30-2313/mysql/neo_example_2024-04-30_8214.sql.gz
+
+- Removing empty directories...
++ Old backups deletion completed.
+
 
 +----------------+
 | Backup to MEGA |

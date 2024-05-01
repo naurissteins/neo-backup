@@ -41,6 +41,11 @@ MEGA_BACKUP="false"                     # Setting this to `true` enables the bac
 MEGA_BACKUP_DIR="/backup"               # This specifies the directory path on Mega.nz where the backups will be stored
 MEGA_DAYS_TO_BACKUP=14                  # Number of days to retain MEGA backup directories before they are automatically deleted
 
+# rclone settings
+RCLONE="false"                          # Set to 'true' to enable rclone, 'false' to disable
+RCLONE_REMOTE=""                        # Example: GoogleDrive:MyBackup or aws3:bucket
+RCLONE_DAYS_TO_BACKUP=14                # Number of days to retain backup
+
 # Logs settings
 LOGS_DIR="${BACKUP_DIR}/logs"           # Specifies the logs directory where all log files will be stored
 LOGS_DELETE=7                           # Number of days to retain log files before they are automatically deleted

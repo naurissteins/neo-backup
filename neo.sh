@@ -36,43 +36,48 @@ Usage: ${0##*/} [options]
     General Options:
         -h, --help                     Display this help and exit.
 
-        --backup-dir          DIR      Specify the directory for storing all backup data                 Default: "/root/backup"
-        --backup-cpu-cores    NUM      Percentage of CPU cores to use for compressing with xz            Default: "1 core"
-        --days-to-backup      NUM      Set the number of days to retain local backup files               Default: 7
+        --backup-dir            DIR      Specify the directory for storing all backup data                 Default: "/root/backup"
+        --backup-cpu-cores      NUM      Percentage of CPU cores to use for compressing with xz            Default: "1 core"
+        --days-to-backup        NUM      Set the number of days to retain local backup files               Default: 7
 
     Domain Backup Options:
-        --domain-backup       BOOL     Enable or disable backing up of domain directories                Default: false
-        --domain-dir          DIR      Specify the directory containing domain data to backup            Default: "/home"
-        --domain-exclude      PATTERN  List domain directories to exclude from backup, separated by '|'  Example: "domain1|domain2"
+        --domain-backup         BOOL     Enable or disable backing up of domain directories                Default: false
+        --domain-dir            DIR      Specify the directory containing domain data to backup            Default: "/home"
+        --domain-exclude        PATTERN  List domain directories to exclude from backup, separated by '|'  Example: "domain1|domain2"
 
     MySQL Backup Options:
-        --mysql-backup        BOOL      Enable or disable backing up of MySQL databases                  Default: false
-        --mysql-exclude       PATTERN   List MySQL databases to exclude from backup, separated by '|'    Example: "database1|database2"
+        --mysql-backup          BOOL      Enable or disable backing up of MySQL databases                  Default: false
+        --mysql-exclude         PATTERN   List MySQL databases to exclude from backup, separated by '|'    Example: "database1|database2"
 
     MyDumper Options:
-        --mydumper            BOOL      Enable or disable database dump with MyDumper                    Default: false
-        --mydumper-threads    NUM       Set the number of threads to use                                 Default: 4
-        --mydumper-verbose    NUM       0 = silent, 1 = errors, 2 = warnings, 3 = info,                  Default: 2
+        --mydumper              BOOL      Enable or disable database dump with MyDumper                    Default: false
+        --mydumper-threads      NUM       Set the number of threads to use                                 Default: 4
+        --mydumper-verbose      NUM       0 = silent, 1 = errors, 2 = warnings, 3 = info,                  Default: 2
 
     SFTP Backup Options:
-        --sftp-backup         BOOL      Enable or disable SFTP backup. Default: false
-        --sftp-backup-dir     DIR       Specify the SFTP directory for storing backup data               Default: "/backup"
-        --sftp-host           HOST      SSH configuration settings to simplify the SFTP command          Default: "backupserver"
-        --sftp-days-to-backup NUM       Days to retain backups on SFTP server                            Default: 14
+        --sftp-backup           BOOL      Enable or disable SFTP backup. Default: false
+        --sftp-backup-dir       DIR       Specify the SFTP directory for storing backup data               Default: "/backup"
+        --sftp-host             HOST      SSH configuration settings to simplify the SFTP command          Default: "backupserver"
+        --sftp-days-to-backup   NUM       Days to retain backups on SFTP server                            Default: 14
 
     AWS S3 Backup Options:
-        --s3-backup           BOOL      Enable or disable backup to AWS S3                               Default: false
-        --s3-bucket           BUCKET    Specify the S3 bucket for storing backups                        Example: "bucket_name"
-        --s3-days-to-backup   NUM       Set the number of days to retain backups on S3                   Default: 14
+        --s3-backup             BOOL      Enable or disable backup to AWS S3                               Default: false
+        --s3-bucket             BUCKET    Specify the S3 bucket for storing backups                        Example: "bucket_name"
+        --s3-days-to-backup     NUM       Set the number of days to retain backups on S3                   Default: 14
+
+    Rclone Backup Options:
+        --rclone                BOOL      Set to 'true' to enable rclone, 'false' to disable               Default: false
+        --rclone-remote         HOST:DIR  Example: GoogleDrive:MyBackup or aws3:bucket                     Example: "aws:bucket"
+        --rclone-days-to-backup NUM       Set the number of days to keep backups                           Default: 14
 
     MEGA Backup Options:
-        --mega-backup         BOOL      Enable or disable backup to Mega.                                Default: false
-        --mega-backup-dir     DIR       Specify the directory on Mega where backups will be stored       Default: "/backup"
-        --mega-days-to-backup NUM       Days to retain backups on Mega                                   Default: 14
+        --mega-backup           BOOL      Enable or disable backup to Mega.                                Default: false
+        --mega-backup-dir       DIR       Specify the directory on Mega where backups will be stored       Default: "/backup"
+        --mega-days-to-backup   NUM       Days to retain backups on Mega                                   Default: 14
 
     Logs Options:
-        --logs-dir            DIR       Specify the directory for storing backup process logs data       Default: "/root/backup/logs"
-        --logs-delete         NUM       Days to retain backup process logs                               Default: 14
+        --logs-dir              DIR       Specify the directory for storing backup process logs data       Default: "/root/backup/logs"
+        --logs-delete           NUM       Days to retain backup process logs                               Default: 14
 
     Examples:
         ./backup.sh --backup-dir "/path/to/backup" --mysql-backup true --mysql-exclude "database1|database2"
@@ -83,7 +88,7 @@ EOF
 
 
 # Define the options
-OPTS=$(getopt -o h --long help,backup-dir:,backup-cpu-cores:,days-to-backup:,domain-backup:,domain-dir:,domain-exclude:,mysql-backup:,mysql-exclude:,mydumper:,mydumper-threads:,mydumper-verbose:,sftp-backup:,sftp-backup-dir:,sftp-host:,sftp-days-to-backup:,s3-backup:,s3-bucket:,s3-days-to-backup:,mega-backup:,mega-backup-dir:,mega-days-to-backup:,logs-dir:,logs-delete: -n 'parse-options' -- "$@")
+OPTS=$(getopt -o h --long help,backup-dir:,backup-cpu-cores:,days-to-backup:,domain-backup:,domain-dir:,domain-exclude:,mysql-backup:,mysql-exclude:,mydumper:,mydumper-threads:,mydumper-verbose:,sftp-backup:,sftp-backup-dir:,sftp-host:,sftp-days-to-backup:,s3-backup:,s3-bucket:,s3-days-to-backup:,rclone:,rclone-remote:,rclone-days-to-backup:,mega-backup:,mega-backup-dir:,mega-days-to-backup:,logs-dir:,logs-delete: -n 'parse-options' -- "$@")
 if [ $? != 0 ]; then
     echo "Failed parsing options." >&2
     exit 1
@@ -162,6 +167,18 @@ while true; do
             ;;
         --s3-days-to-backup )
             S3_DAYS_TO_BACKUP="$2"
+            shift 2
+            ;;
+        --rclone )
+            RCLONE="$2"
+            shift 2
+            ;;
+        --rclone-remote )
+            RCLONE_REMOTE="$2"
+            shift 2
+            ;;
+        --rclone-days-to-backup )
+            RCLONE_DAYS_TO_BACKUP="$2"
             shift 2
             ;;
         --mega-backup )
@@ -415,7 +432,6 @@ if [ "${MYSQL_BACKUP}" = "true" ]; then
 
     # Display skipped databases if any
     if [ -n "$exclude_db" ]; then
-        echo | tee -a "$LOG_FILE"
         echo "- Excluded database: $exclude_db" | tee -a "$LOG_FILE"
     fi
 
@@ -592,6 +608,60 @@ if [ "${S3_BACKUP}" = "true" ]; then
     if [ -f "$temp_file" ]; then
         rm "$temp_file"
     fi
+fi
+
+# rclone Backup
+if [ "${RCLONE}" = "true" ]; then
+    print_styled_log "Backup to rclone"
+    FULL_RCLONE_PATH="${RCLONE_REMOTE}/${CURRENT_DATE}/"
+
+    echo "- Uploading $TODAYS_BACKUP_DIR to $RCLONE_REMOTE ... " | tee -a "$LOG_FILE"
+
+    # Upload the backup directory to rclone with stats reporting every 2 seconds, more verbose output
+    if rclone copy "${TODAYS_BACKUP_DIR}/" "${FULL_RCLONE_PATH}" --stats 2s --verbose >> "$LOG_FILE" 2>&1; then
+        echo | tee -a "$LOG_FILE"
+        echo "+ Backup successfully uploaded!" | tee -a "$LOG_FILE"
+    else
+        echo | tee -a "$LOG_FILE"
+        echo "! Failed to upload backup via rclone" | tee -a "$LOG_FILE"
+        exit 1
+    fi
+
+    # Deleting old backups from rclone
+    echo | tee -a "$LOG_FILE"
+    echo "- Checking for backup directories older than ${RCLONE_DAYS_TO_BACKUP} days..." | tee -a "$LOG_FILE"
+
+    # Variable to track if any file was deleted
+    deletions_made=false
+
+    # Generate a temporary file to store the old backups list
+    temp_file=$(mktemp)
+
+    # List old backup files and store in temporary file
+    rclone ls --min-age ${RCLONE_DAYS_TO_BACKUP}d "${RCLONE_REMOTE}/" > "$temp_file"
+
+    # Check if the temp file is empty or not
+    if [ -s "$temp_file" ]; then
+        # Read from the temporary file and delete old backups
+        while read -r size path; do
+            echo "| Deleting: $path" | tee -a "$LOG_FILE"
+            rclone delete "${RCLONE_REMOTE}/$path" && deletions_made=true
+        done < "$temp_file"
+    else
+        echo "- No old backups to delete." | tee -a "$LOG_FILE"
+    fi
+
+    # Remove the temporary file
+    rm "$temp_file"
+
+    # Remove any empty directories left behind if any deletions were made
+    if [ "$deletions_made" = true ]; then
+        echo "- Removing empty directories..." | tee -a "$LOG_FILE"
+        rclone rmdirs "${RCLONE_REMOTE}/" | tee -a "$LOG_FILE"
+        echo | tee -a "$LOG_FILE"
+        echo "+ Old backups deletion completed." | tee -a "$LOG_FILE"
+    fi
+
 fi
 
 # Mega.nz backup
